@@ -13,14 +13,14 @@ class Core(val sharedMemory: Memory) {
     fun process(instruction: Instruction) {
         var incrementInstructionPointer = true
         when(instruction.opcode) {
-            Opcode.LOAD_CONSTANT         -> R[instruction.arg1.toInt()] = instruction.arg2
-            Opcode.MOVE                  -> R[instruction.arg2.toInt()] = R[instruction.arg1.toInt()]
-            Opcode.STORE                 -> sharedMemory[R[instruction.arg2.toInt()]] = R[instruction.arg1.toInt()]
-            Opcode.RECALL                -> R[instruction.arg2.toInt()] = sharedMemory[R[instruction.arg1.toInt()]]
+            Opcode.LOAD_CONSTANT         -> R[instruction[0].toInt()] = instruction[1]
+            Opcode.MOVE                  -> R[instruction[1].toInt()] = R[instruction[0].toInt()]
+            Opcode.STORE                 -> sharedMemory[R[instruction[1].toInt()]] = R[instruction[0].toInt()]
+            Opcode.RECALL                -> R[instruction[1].toInt()] = sharedMemory[R[instruction[0].toInt()]]
             Opcode.ADD                   -> R[Register.OPERATOR1.index] += R[Register.OPERATOR2.index]
             Opcode.MUL                   -> R[Register.OPERATOR1.index] *= R[Register.OPERATOR2.index]
-            Opcode.INCREMENT             -> R[instruction.arg1.toInt()]++
-            Opcode.DECREMENT             -> R[instruction.arg1.toInt()]--
+            Opcode.INCREMENT             -> R[instruction[0].toInt()]++
+            Opcode.DECREMENT             -> R[instruction[0].toInt()]--
             Opcode.EQUALS                -> R[Register.OPERATOR1.index] = if (R[Register.OPERATOR1.index] == R[Register.OPERATOR2.index]) 1L else 0L
             Opcode.GREATER_THAN          -> R[Register.OPERATOR1.index] = if (R[Register.OPERATOR1.index] >  R[Register.OPERATOR2.index]) 1L else 0L
             Opcode.GREATER_THAN_OR_EQUAL -> R[Register.OPERATOR1.index] = if (R[Register.OPERATOR1.index] >= R[Register.OPERATOR2.index]) 1L else 0L
@@ -30,29 +30,24 @@ class Core(val sharedMemory: Memory) {
             Opcode.AND                   -> R[Register.OPERATOR1.index] = R[Register.OPERATOR1.index] and R[Register.OPERATOR2.index]
             Opcode.XOR                   -> R[Register.OPERATOR1.index] = R[Register.OPERATOR1.index] xor R[Register.OPERATOR2.index]
             Opcode.JUMP                  -> {
-                R[Register.INSTRUCTION_POINTER.index] = instruction.arg1
+                R[Register.INSTRUCTION_POINTER.index] = instruction[0]
                 incrementInstructionPointer = false
             }
             Opcode.VARJUMP               -> {
-                R[Register.INSTRUCTION_POINTER.index] = R[instruction.arg1.toInt()]
+                R[Register.INSTRUCTION_POINTER.index] = R[instruction[0].toInt()]
                 incrementInstructionPointer = false
             }
             Opcode.CONDITIONAL_JUMP      -> {
                 if (R[Register.OPERATOR1.index] == 1L) {
-                    R[Register.INSTRUCTION_POINTER.index] = instruction.arg1
+                    R[Register.INSTRUCTION_POINTER.index] = instruction[0]
                     incrementInstructionPointer = false
                 }
             }
             Opcode.CONDITIONAL_VARJUMP   -> {
                 if (R[Register.OPERATOR1.index] == 1L) {
-                    R[Register.INSTRUCTION_POINTER.index] = R[instruction.arg1.toInt()]
+                    R[Register.INSTRUCTION_POINTER.index] = R[instruction[0].toInt()]
                     incrementInstructionPointer = false
                 }
-            }
-            Opcode.CALL                  -> {
-                R[Register.RETURN_INSTRUCTION.index] = R[Register.INSTRUCTION_POINTER.index] + 1
-                R[Register.INSTRUCTION_POINTER.index] = instruction.arg1
-                incrementInstructionPointer = false
             }
             Opcode.TERMINATE             -> throw TerminationException()
         }

@@ -6,8 +6,6 @@ import com.github.tmarsteel.bytecode.vm.Register
 import java.io.FileOutputStream
 import java.nio.file.Path
 
-data class Location(val file: Path, val line: Int)
-
 fun compileFile(input: Path, output: Path) {
 
     val labels: MutableMap<String,Int> = mutableMapOf()
@@ -48,17 +46,16 @@ fun compileFile(input: Path, output: Path) {
                 if (tokens[0] in OPCODE_MAPPING) {
                     val opcode = OPCODE_MAPPING[tokens[0]]!!
 
-                    val arg1 = if (tokens.size < 2) 0 else try {
-                        parseOpcodeArgument(tokens[1], labels, location)
-                    } catch (ex: NumberFormatException) {
-                        throw SyntaxError("Failed to parse argument 1", location)
+                    if (tokens.size != opcode.nArgs + 1) {
+                        throw SyntaxError("Opcode ${opcode.name} defines {$opcode.nArgs} arguments, {$tokens.size - 1} given", location)
                     }
-                    val arg2 = if (tokens.size < 3) 0 else try {
-                        parseOpcodeArgument(tokens[2], labels, location)
-                    } catch (ex: NumberFormatException) {
-                        throw SyntaxError("Failed to parse argument 2", location)
+
+                    val args = LongArray(opcode.nArgs)
+                    for (argIndex in 0..args.lastIndex) {
+                        args[argIndex] = parseOpcodeArgument(tokens[1 + argIndex], labels, location)
                     }
-                    writer.write(Instruction(opcode, arg1, arg2))
+
+                    writer.write(Instruction(opcode, args))
                 } else {
                     throw UnknownOpcodeException(tokens[0], location)
                 }

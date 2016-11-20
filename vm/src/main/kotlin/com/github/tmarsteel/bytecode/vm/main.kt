@@ -1,7 +1,6 @@
 package com.github.tmarsteel.bytecode.vm
 
 import com.github.tmarsteel.bytecode.binary.BytecodeReader
-import org.omg.CORBA.DynAnyPackage.Invalid
 import java.io.File
 import java.io.FileInputStream
 import kotlin.system.exitProcess

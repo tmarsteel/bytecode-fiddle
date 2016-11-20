@@ -36,7 +36,11 @@ class BytecodeReader(private val input: InputStream, val closeOnEOF: Boolean = t
 
         for (opcodeInst in Instruction.Opcode.values()) {
             if (opcodeInst.byteValue == opcode) {
-                return Instruction(opcodeInst, readArg(), readArg())
+                var args = LongArray(opcodeInst.nArgs)
+                for (argIndex in 0..args.lastIndex) {
+                    args[argIndex] = readArg()
+                }
+                return Instruction(opcodeInst, args)
             }
         }
 
@@ -66,7 +70,10 @@ class BytecodeReader(private val input: InputStream, val closeOnEOF: Boolean = t
     }
 
     fun close() {
-        if (!inputClosed) input.close()
+        if (!inputClosed) {
+            input.close()
+            inputClosed = true
+        }
     }
 
     companion object {
