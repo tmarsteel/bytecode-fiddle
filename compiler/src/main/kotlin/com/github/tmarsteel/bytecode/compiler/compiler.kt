@@ -8,40 +8,23 @@ import java.nio.file.Path
 
 fun compileFile(input: Path, output: Path) {
 
-    val labels: MutableMap<String,Int> = mutableMapOf()
+    val context = CompilationContext()
 
     FileOutputStream(output.toFile()).use { outStream ->
-        var writer = BytecodeWriter(outStream)
-
         val inputLines = input.toFile().readLines()
 
         var lineNumber = 1
         var instructionIndex = 0
 
-        // find labels
-        inputLines.forEach {
-            val line = it.trim()
-            if (line.isEmpty() || line.startsWith("//")) {
-                // ignored
-            }
-            else if (line.startsWith(':')) {
-                // label line
-                labels[line.substring(1)] = instructionIndex
-            }
-            else {
-                instructionIndex++
-            }
-        }
-
-
         inputLines.forEach {
             val line = it.trim()
             val location = Location(input, lineNumber)
 
-            if (line.isEmpty() || line.startsWith(':') || line.startsWith("//")) {
-                // ignored
+            if (line.startsWith(':')) {
+                // label
+                context.labels[line.substring(1)] = instructionIndex
             }
-            else {
+            else if (!line.isEmpty() && !line.startsWith("//")) {
                 val tokens = line.split(" ")
                 if (tokens[0] in OPCODE_MAPPING) {
                     val opcode = OPCODE_MAPPING[tokens[0]]!!
@@ -50,12 +33,11 @@ fun compileFile(input: Path, output: Path) {
                         throw SyntaxError("Opcode ${opcode.name} defines {$opcode.nArgs} arguments, {$tokens.size - 1} given", location)
                     }
 
-                    val args = LongArray(opcode.nArgs)
-                    for (argIndex in 0..args.lastIndex) {
-                        args[argIndex] = parseOpcodeArgument(tokens[1 + argIndex], labels, location)
-                    }
+                    val args = Array<() -> Long>(opcode.nArgs, { index ->
+                        parseOpcodeArgument(tokens[1 + index], context, location)
+                    })
 
-                    writer.write(Instruction(opcode, args))
+                    context.collectedInstructions.add(DeferredInstruction(opcode, args))
                 } else {
                     throw UnknownOpcodeException(tokens[0], location)
                 }
@@ -64,21 +46,32 @@ fun compileFile(input: Path, output: Path) {
             }
             lineNumber++
         }
+
+        var writer = BytecodeWriter(outStream)
+        context.collectedInstructions.forEach {
+            writer.write(it.actual)
+            print(it.actual.opcode)
+            for (i in 0..it.actual.opcode.nArgs - 1) {
+                print(" ")
+                print(it.actual[i])
+            }
+            println()
+        }
     }
 }
 
-fun parseOpcodeArgument(value: String, labels: Map<String,Int>, location: Location): Long {
+fun parseOpcodeArgument(value: String, context: CompilationContext, location: Location): () -> Long {
     // hexadecimal
     if (value.startsWith("0x")) {
-        return java.lang.Long.parseLong(value.substring(2), 16)
+        return {java.lang.Long.parseLong(value.substring(2), 16)}
     }
     else if (value.startsWith("0b")) {
-        return java.lang.Long.parseLong(value.substring(2), 2)
+        return {java.lang.Long.parseLong(value.substring(2), 2)}
     }
     else if (value.startsWith('#')) {
         val rName = value.substring(1).toUpperCase()
         if (rName in REGISTER_MAPPING) {
-            return REGISTER_MAPPING[rName]!!.index.toLong()
+            return {REGISTER_MAPPING[rName]!!.index.toLong()}
         }
         else {
             throw UnknownRegisterException(rName, location)
@@ -86,16 +79,31 @@ fun parseOpcodeArgument(value: String, labels: Map<String,Int>, location: Locati
     }
     else if (value.startsWith(':')) {
         val labelName = value.substring(1)
-        if (labelName in labels) {
-            return labels[labelName]!!.toLong()
-        }
-        else {
-            throw UnknownLabelException(labelName, location)
+        return {
+            if (labelName in context.labels) {
+                val instructionIndex = context.labels[labelName]!!
+                context.collectedInstructions
+                    .subList(0, instructionIndex)
+                    .map({ it.opCode.qWordSize })
+                    .sum()
+                    .toLong()
+            }
+            else {
+                throw UnknownLabelException(labelName, location)
+            }
         }
     }
     else {
-        return java.lang.Long.parseLong(value, 10)
+        return {java.lang.Long.parseLong(value, 10)}
     }
+}
+
+class DeferredInstruction(val opCode: Instruction.Opcode, private val generator: () -> Instruction) {
+
+    constructor(opcode: Instruction.Opcode, args: Array<() -> Long> ) : this(opcode, { Instruction(opcode, args.map({ it() }).toLongArray() ) })
+    { /* NOOP */ }
+
+    val actual: Instruction by lazy { generator() }
 }
 
 val OPCODE_MAPPING = mapOf(
@@ -133,5 +141,6 @@ val REGISTER_MAPPING = mapOf(
         "M8" to Register.MEMORY8,
         "A1" to Register.OPERATOR1,
         "A2" to Register.OPERATOR2,
-        "R"  to Register.RETURN_INSTRUCTION
+        "R"  to Register.RETURN_INSTRUCTION,
+        "IP" to Register.INSTRUCTION_POINTER
 )

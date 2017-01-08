@@ -34,17 +34,18 @@ class BytecodeReader(private val input: InputStream, val closeOnEOF: Boolean = t
             return null
         }
 
-        for (opcodeInst in Instruction.Opcode.values()) {
-            if (opcodeInst.byteValue == opcode) {
-                var args = LongArray(opcodeInst.nArgs)
-                for (argIndex in 0..args.lastIndex) {
-                    args[argIndex] = readArg()
-                }
-                return Instruction(opcodeInst, args)
-            }
+        val opcodeInst = try {
+            Instruction.Opcode.byByteValue(opcode)
+        }
+        catch (ex: com.github.tmarsteel.bytecode.binary.UnknownOpcodeException) {
+            throw UnknownOpcodeException(opcode, offsetCounter, ex)
         }
 
-        throw UnknownOpcodeException(opcode, offsetCounter)
+        var args = LongArray(opcodeInst.nArgs)
+        for (argIndex in 0..args.lastIndex) {
+            args[argIndex] = readArg()
+        }
+        return Instruction(opcodeInst, args)
     }
 
     private fun readArg(): Long {
@@ -78,7 +79,7 @@ class BytecodeReader(private val input: InputStream, val closeOnEOF: Boolean = t
 
     companion object {
         open class BinaryParseException(message: String, cause: Throwable? = null) : IOException(message, cause)
-        class UnknownOpcodeException(val opcode: Byte, val offset: Long) : BinaryParseException("Unknown opcode $opcode at offset $offset")
+        class UnknownOpcodeException(val opcode: Byte, val offset: Long, cause: Throwable? = null) : BinaryParseException("Unknown opcode $opcode at offset $offset", cause)
         class UnexpectedEOFException(val offset: Long) : BinaryParseException("Unexpected EOF at offset $offset")
     }
 }

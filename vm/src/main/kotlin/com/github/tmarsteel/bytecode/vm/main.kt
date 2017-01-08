@@ -5,39 +5,37 @@ import java.io.File
 import java.io.FileInputStream
 import kotlin.system.exitProcess
 
+/** Location in memory where the boot code is written to */
+val INITIAL_CODE_OFFSET = 0x0L
+
 fun main(vararg args: String) {
     if (args.size != 1) {
         println("Specify exactly one input file!")
         exitProcess(-1)
     }
 
-    val core = Core(Memory())
-    val reader = BytecodeReader(FileInputStream(File(args[0])))
-    val instructions = reader.asSequence().toList()
+    val memory = Memory()
 
-    while (true) {
-        val instruction = try {
-            instructions[core[Register.INSTRUCTION_POINTER].toInt()]
+    // write code into memory
+    FileInputStream(File(args[0])).use { inStream ->
+        val reader = BytecodeReader(inStream, false)
+        var offset = INITIAL_CODE_OFFSET
+        while(reader.hasNext()) {
+            val instruction = reader.next()
+            instruction.writeTo(memory, offset)
+            offset += instruction.qWordSize
         }
-        catch (ex: ArrayIndexOutOfBoundsException) {
-            throw InvalidJumpOffset(core[Register.INSTRUCTION_POINTER])
-        }
+    }
 
-        // println(instruction.opcode.name + " " + instruction.arg1 + " " + instruction.arg2)
-        try {
-            core.process(instruction)
-        }
-        catch (ex: TerminationException) {
-            break
-        }
+    // run the core!
+    val core = Core(memory)
 
-        // printCoreState(core)
-        // println()
-
-        if (core[Register.INSTRUCTION_POINTER] == instructions.size.toLong()) {
-            // end of code reached
-            break
-        }
+    try {
+        core.runCodeAt(INITIAL_CODE_OFFSET)
+    }
+    catch (ex: TerminationException) {
+        println("Code terminated")
+        println(ex)
     }
 
     printCoreState(core)
@@ -51,5 +49,4 @@ fun printCoreState(core: Core) {
 }
 
 open class VMRuntimeException(msg: String) : RuntimeException(msg)
-class InvalidJumpOffset(val offset: Long) : VMRuntimeException("Invalid jump offset $offset; cannot jump")
 class TerminationException : VMRuntimeException("Terminated")

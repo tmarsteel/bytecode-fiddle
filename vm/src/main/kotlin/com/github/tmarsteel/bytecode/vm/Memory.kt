@@ -3,9 +3,9 @@ package com.github.tmarsteel.bytecode.vm
 /**
  * Models variable-sized memory
  */
-class Memory(val initSize: Int = 0xFFFF) {
-
-    private var data: LongArray = LongArray(initSize)
+class Memory(initSize: Int = 0xFFFF)
+{
+    private var data: LongArray = LongArray(initSize);
 
     var size: Int
         get() = data.size

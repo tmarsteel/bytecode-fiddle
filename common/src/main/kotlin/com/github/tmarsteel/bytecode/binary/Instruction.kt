@@ -1,6 +1,6 @@
 package com.github.tmarsteel.bytecode.binary
 
-class Instruction constructor(val opcode: Opcode, private val args: LongArray) {
+open class Instruction constructor(val opcode: Opcode, private val args: LongArray) {
 
     init {
         if (args.size != opcode.nArgs) {
@@ -8,8 +8,17 @@ class Instruction constructor(val opcode: Opcode, private val args: LongArray) {
         }
     }
 
+    /**
+     * The number of long words (QWORD) this instruction occupies.
+     */
+    val qWordSize: Int = opcode.qWordSize
+
     operator fun get(argIndex: Int): Long {
         return args[argIndex]
+    }
+
+    override fun toString(): String {
+        return opcode.name + " " + args.joinToString(" ")
     }
 
     enum class Opcode(val byteValue: Byte, val nArgs: Int) {
@@ -33,6 +42,21 @@ class Instruction constructor(val opcode: Opcode, private val args: LongArray) {
         CONDITIONAL_VARJUMP(17, 1),
         DECREMENT(18, 1),
         LESS_THAN(19, 0),
-        LESS_THAN_OR_EQUAL(20, 0)
+        LESS_THAN_OR_EQUAL(20, 0);
+
+        /** The number of long words (QWORD) an instruction with this opcode needs */
+        val qWordSize: Int = nArgs + 1
+
+        companion object {
+            /**
+             * Returns the opcode with the given value.
+             * @throws UnknownOpcodeException If the given byteValue does not map to an opcode.
+             */
+            fun byByteValue(byteValue: Byte): Opcode {
+                return Opcode.values().find { it.byteValue == byteValue } ?: throw UnknownOpcodeException(byteValue)
+            }
+        }
     }
 }
+
+class UnknownOpcodeException(val opcode: Byte) : RuntimeException("Unknown opcode $opcode")
