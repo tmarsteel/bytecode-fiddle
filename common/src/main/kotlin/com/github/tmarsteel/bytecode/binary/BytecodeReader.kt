@@ -27,7 +27,7 @@ class BytecodeReader(private val input: InputStream, val closeOnEOF: Boolean = t
 
     private fun readNext(): Instruction? {
         val opcode = try {
-            readByte()
+            readByte().toByte()
         }
         catch (ex: UnexpectedEOFException) {
             if (closeOnEOF) close()
@@ -59,7 +59,7 @@ class BytecodeReader(private val input: InputStream, val closeOnEOF: Boolean = t
                  readByte().toLong()
     }
 
-    private fun readByte(): Byte {
+    private fun readByte(): Int {
         val byte = input.read()
         if (byte == -1) {
             throw UnexpectedEOFException(offsetCounter)
@@ -67,7 +67,7 @@ class BytecodeReader(private val input: InputStream, val closeOnEOF: Boolean = t
 
         offsetCounter++
 
-        return byte.toByte()
+        return byte
     }
 
     fun close() {

@@ -42,7 +42,9 @@ open class Instruction constructor(val opcode: Opcode, private val args: LongArr
         CONDITIONAL_VARJUMP(17, 1),
         DECREMENT(18, 1),
         LESS_THAN(19, 0),
-        LESS_THAN_OR_EQUAL(20, 0);
+        LESS_THAN_OR_EQUAL(20, 0),
+        DEBUG_CORE_STATE(21, 0),
+        DEBUG_MEMORY_RANGE(22, 0);
 
         /** The number of long words (QWORD) an instruction with this opcode needs */
         val qWordSize: Int = nArgs + 1

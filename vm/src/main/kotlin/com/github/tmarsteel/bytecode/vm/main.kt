@@ -17,18 +17,25 @@ fun main(vararg args: String) {
     val memory = Memory()
 
     // write code into memory
+    var offset = INITIAL_CODE_OFFSET
     FileInputStream(File(args[0])).use { inStream ->
         val reader = BytecodeReader(inStream, false)
-        var offset = INITIAL_CODE_OFFSET
+        println("Reading code...")
         while(reader.hasNext()) {
             val instruction = reader.next()
             instruction.writeTo(memory, offset)
             offset += instruction.qWordSize
+            println(instruction)
         }
+        println("-----------------------------")
     }
 
-    // run the core!
+    // setup the core
     val core = Core(memory)
+
+    // write boot code meta
+    core[Register.MEMORY1] = INITIAL_CODE_OFFSET
+    core[Register.MEMORY2] = offset
 
     try {
         core.runCodeAt(INITIAL_CODE_OFFSET)
@@ -37,8 +44,6 @@ fun main(vararg args: String) {
         println("Code terminated")
         println(ex)
     }
-
-    printCoreState(core)
 }
 
 fun printCoreState(core: Core) {

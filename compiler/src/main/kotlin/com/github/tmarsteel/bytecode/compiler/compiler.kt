@@ -5,7 +5,6 @@ import com.github.tmarsteel.bytecode.binary.Instruction
 import com.github.tmarsteel.bytecode.vm.Register
 import java.io.FileOutputStream
 import java.nio.file.Path
-import java.nio.file.Paths
 
 fun compileFile(input: Path, output: Path) {
 
@@ -60,7 +59,7 @@ fun compileLines(lines: List<String>, locationOf: (Int) -> Location, context: Co
             }
             else if (tokens[0] in context.macros) {
                 context.macros[tokens[0]]!!.unrollAndCompile(
-                    tokens.subList(1, tokens.lastIndex),
+                    tokens.subList(1, tokens.size),
                     location,
                     context
                 )
@@ -113,6 +112,24 @@ fun parseOpcodeArgument(value: String, context: CompilationContext, location: Lo
     }
 }
 
+fun parseLiteralArgument(value: String): Long {
+    // hexadecimal
+    if (value.startsWith("0x")) {
+        return java.lang.Long.parseLong(value.substring(2), 16)
+    }
+    // binary
+    else if (value.startsWith("0b")) {
+        return java.lang.Long.parseLong(value.substring(2), 2)
+    }
+    else {
+        return java.lang.Long.parseLong(value, 10)
+    }
+}
+
+fun isRegisterArgument(arg: String): Boolean {
+    return arg.startsWith("#") && arg.substring(1) in REGISTER_MAPPING
+}
+
 class DeferredInstruction(val opCode: Instruction.Opcode, private val generator: () -> Instruction) {
 
     constructor(opcode: Instruction.Opcode, args: Array<() -> Long> ) : this(opcode, { Instruction(opcode, args.map({ it() }).toLongArray() ) })
@@ -122,7 +139,7 @@ class DeferredInstruction(val opCode: Instruction.Opcode, private val generator:
 }
 
 val OPCODE_MAPPING = mapOf(
-        "ldcnst" to Instruction.Opcode.LOAD_CONSTANT,
+        "ldc"    to Instruction.Opcode.LOAD_CONSTANT,
         "mov"    to Instruction.Opcode.MOVE,
         "add"    to Instruction.Opcode.ADD,
         "mul"    to Instruction.Opcode.MUL,
@@ -142,7 +159,8 @@ val OPCODE_MAPPING = mapOf(
         "or"     to Instruction.Opcode.OR,
         "and"    to Instruction.Opcode.AND,
         "xor"    to Instruction.Opcode.XOR,
-        "term"   to Instruction.Opcode.TERMINATE
+        "term"   to Instruction.Opcode.TERMINATE,
+        "debug_core_state" to Instruction.Opcode.DEBUG_CORE_STATE
 )
 
 val REGISTER_MAPPING = mapOf(

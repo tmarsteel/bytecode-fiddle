@@ -44,6 +44,7 @@ class Core(val sharedMemory: Memory) {
                     R[Register.INSTRUCTION_POINTER.index] = R[instruction[0].toInt()]
                 }
             }
+            Opcode.DEBUG_CORE_STATE      -> printCoreState(this)
             Opcode.TERMINATE             -> throw TerminationException()
         }
     }
