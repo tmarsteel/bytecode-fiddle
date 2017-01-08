@@ -1,6 +1,8 @@
 ldcnst #a1 2
-ldcnst #a2 10
-call :pow
+ldcnst #a2 32
+ldcnst #r :label1
+jmp :pow
+:label1
 term
 
 // subroutine pow, uses a1, a2, m6, m7 and m8; result in a1, returns to #r

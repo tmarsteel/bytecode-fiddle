@@ -8,4 +8,6 @@ class CompilationContext {
     val labels: MutableMap<String,Int> = mutableMapOf()
 
     val collectedInstructions: MutableList<DeferredInstruction> = mutableListOf()
+
+    val macros: MutableMap<String,MacroCommand> = mutableMapOf()
 }

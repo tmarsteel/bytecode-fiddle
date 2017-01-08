@@ -5,6 +5,7 @@ import com.github.tmarsteel.bytecode.binary.Instruction
 import com.github.tmarsteel.bytecode.vm.Register
 import java.io.FileOutputStream
 import java.nio.file.Path
+import java.nio.file.Paths
 
 fun compileFile(input: Path, output: Path) {
 
@@ -13,39 +14,9 @@ fun compileFile(input: Path, output: Path) {
     FileOutputStream(output.toFile()).use { outStream ->
         val inputLines = input.toFile().readLines()
 
-        var lineNumber = 1
-        var instructionIndex = 0
+        val locationGenerator = { line: Int -> Location(input, line) }
 
-        inputLines.forEach {
-            val line = it.trim()
-            val location = Location(input, lineNumber)
-
-            if (line.startsWith(':')) {
-                // label
-                context.labels[line.substring(1)] = instructionIndex
-            }
-            else if (!line.isEmpty() && !line.startsWith("//")) {
-                val tokens = line.split(" ")
-                if (tokens[0] in OPCODE_MAPPING) {
-                    val opcode = OPCODE_MAPPING[tokens[0]]!!
-
-                    if (tokens.size != opcode.nArgs + 1) {
-                        throw SyntaxError("Opcode ${opcode.name} defines {$opcode.nArgs} arguments, {$tokens.size - 1} given", location)
-                    }
-
-                    val args = Array<() -> Long>(opcode.nArgs, { index ->
-                        parseOpcodeArgument(tokens[1 + index], context, location)
-                    })
-
-                    context.collectedInstructions.add(DeferredInstruction(opcode, args))
-                } else {
-                    throw UnknownOpcodeException(tokens[0], location)
-                }
-
-                instructionIndex++
-            }
-            lineNumber++
-        }
+        compileLines(inputLines, locationGenerator, context)
 
         var writer = BytecodeWriter(outStream)
         context.collectedInstructions.forEach {
@@ -58,6 +29,50 @@ fun compileFile(input: Path, output: Path) {
             println()
         }
     }
+}
+
+fun compileLines(lines: List<String>, locationOf: (Int) -> Location, context: CompilationContext = CompilationContext()): List<DeferredInstruction> {
+
+    var lineNumber = 1
+
+    lines.forEach {
+        val line = it.trim()
+        val location = locationOf(lineNumber)
+
+        if (line.startsWith(':')) {
+            // label
+            context.labels[line.substring(1)] = context.collectedInstructions.size
+        }
+        else if (!line.isEmpty() && !line.startsWith("//")) {
+            val tokens = line.split(" ")
+            if (tokens[0] in OPCODE_MAPPING) {
+                val opcode = OPCODE_MAPPING[tokens[0]]!!
+
+                if (tokens.size != opcode.nArgs + 1) {
+                    throw SyntaxError("Opcode ${opcode.name} defines {$opcode.nArgs} arguments, {$tokens.size - 1} given", location)
+                }
+
+                val args = Array<() -> Long>(opcode.nArgs, { index ->
+                    parseOpcodeArgument(tokens[1 + index], context, location)
+                })
+
+                context.collectedInstructions.add(DeferredInstruction(opcode, args))
+            }
+            else if (tokens[0] in context.macros) {
+                context.macros[tokens[0]]!!.unrollAndCompile(
+                    tokens.subList(1, tokens.lastIndex),
+                    location,
+                    context
+                )
+            }
+            else {
+                throw UnknownOpcodeException(tokens[0], location)
+            }
+        }
+        lineNumber++
+    }
+
+    return context.collectedInstructions
 }
 
 fun parseOpcodeArgument(value: String, context: CompilationContext, location: Location): () -> Long {
