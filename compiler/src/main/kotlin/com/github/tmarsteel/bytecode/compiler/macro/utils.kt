@@ -1,32 +1,9 @@
-package com.github.tmarsteel.bytecode.compiler;
+package com.github.tmarsteel.bytecode.compiler.macros
 
-import java.nio.file.Paths
-
-interface MacroCommand {
-    /**
-     * Given the macro parameters `tokens`, returns the list of statements to be compiled with the parameters
-     * applied.
-     */
-    fun unroll(tokens: List<String>, includeLocation: Location): List<String>
-
-    fun locationOf(line: Int): Location = Location(Paths.get("#predefinedMacro"), line)
-
-    fun unrollAndCompile(tokens: List<String>, includeLocation: Location, context: CompilationContext): List<DeferredInstruction> {
-        val statements = unroll(tokens, includeLocation)
-
-        println("Unrolled macro ${this.javaClass.simpleName} ($tokens):")
-        println(statements.joinToString("\n"))
-
-        return compileLines(
-                statements,
-                { line ->
-                    val macroCodeLocation = locationOf(line)
-                    MacroLocation(macroCodeLocation.file, macroCodeLocation.line, includeLocation)
-                },
-                context
-        )
-    }
-}
+import com.github.tmarsteel.bytecode.compiler.Location
+import com.github.tmarsteel.bytecode.compiler.MacroCommand
+import com.github.tmarsteel.bytecode.compiler.SyntaxError
+import com.github.tmarsteel.bytecode.compiler.isRegisterArgument
 
 /**
  * Persists all the memory registers in an 8-QWORD block in memory. Takes one parameter:
@@ -59,7 +36,6 @@ val StoreMemoryRegistersMacro = object : MacroCommand {
         return instructions
     }
 }
-
 /**
  * Fills all the memory registers from an 8-QWORD block in memory. Takes one parameter:
  * - addr: The start address to recall from; a literal is interpreted as a literal memory address; a register is read
