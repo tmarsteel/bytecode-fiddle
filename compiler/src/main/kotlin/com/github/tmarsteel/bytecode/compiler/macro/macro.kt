@@ -1,5 +1,6 @@
-package com.github.tmarsteel.bytecode.compiler;
+package com.github.tmarsteel.bytecode.compiler.macro;
 
+import com.github.tmarsteel.bytecode.compiler.*
 import java.nio.file.Paths
 
 interface MacroCommand {

@@ -1,7 +1,7 @@
-package com.github.tmarsteel.bytecode.compiler.macros
+package com.github.tmarsteel.bytecode.compiler.macro
 
 import com.github.tmarsteel.bytecode.compiler.Location
-import com.github.tmarsteel.bytecode.compiler.MacroCommand
+import com.github.tmarsteel.bytecode.compiler.macro.MacroCommand
 import com.github.tmarsteel.bytecode.compiler.SyntaxError
 import com.github.tmarsteel.bytecode.compiler.isRegisterArgument
 

@@ -1,5 +1,8 @@
 package com.github.tmarsteel.bytecode.compiler
 
+import com.github.tmarsteel.bytecode.compiler.macro.MacroCommand
+import com.github.tmarsteel.bytecode.compiler.macro.RecallMemoryRegistersMacro
+import com.github.tmarsteel.bytecode.compiler.macro.StoreMemoryRegistersMacro
 import java.util.*
 
 /**
@@ -11,10 +14,10 @@ class CompilationContext {
 
     val collectedInstructions: MutableList<DeferredInstruction> = mutableListOf()
 
-    val macros: MutableMap<String,MacroCommand> = HashMap(PREDEFINED_MACROS)
+    val macros: MutableMap<String, MacroCommand> = HashMap(PREDEFINED_MACROS)
 }
 
-val PREDEFINED_MACROS: Map<String,MacroCommand> = mapOf(
+val PREDEFINED_MACROS: Map<String, MacroCommand> = mapOf(
         "_stoRegs" to StoreMemoryRegistersMacro,
         "_rclRegs" to RecallMemoryRegistersMacro
 )
