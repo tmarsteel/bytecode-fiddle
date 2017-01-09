@@ -5,19 +5,16 @@ import java.io.File
 import java.io.FileInputStream
 import kotlin.system.exitProcess
 
-/** Location in memory where the boot code is written to */
-val INITIAL_CODE_OFFSET = 0x0L
-
 fun main(vararg args: String) {
     if (args.size != 1) {
         println("Specify exactly one input file!")
         exitProcess(-1)
     }
 
-    val memory = Memory()
+    val memory = Memory(65535)
 
-    // write code into memory
-    var offset = INITIAL_CODE_OFFSET
+    // write code into memory starting at 0x0000
+    var offset = 0x0L
     FileInputStream(File(args[0])).use { inStream ->
         val reader = BytecodeReader(inStream, false)
         println("Reading code...")
@@ -34,11 +31,10 @@ fun main(vararg args: String) {
     val core = Core(memory)
 
     // write boot code meta
-    core[Register.MEMORY1] = INITIAL_CODE_OFFSET
-    core[Register.MEMORY2] = offset
+    core[Register.MEMORY1] = offset
 
     try {
-        core.runCodeAt(INITIAL_CODE_OFFSET)
+        core.runCodeAt(0x0L)
     }
     catch (ex: TerminationException) {
         println("Code terminated")

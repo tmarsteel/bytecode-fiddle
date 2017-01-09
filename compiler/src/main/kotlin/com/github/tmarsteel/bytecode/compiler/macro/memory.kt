@@ -1,5 +1,11 @@
 package com.github.tmarsteel.bytecode.compiler.macro
 
 /**
- * Created by tobse on 09.01.17.
+ * Allocates a new stackframe on the stack. Takes one parameter:
+ * - previousAddr: The address of the previous
  */
+val AllocateStackframeMacro = object : MacroCommand {
+    fun unroll(tokens: List<String>): List<String> {
+
+    }
+}
