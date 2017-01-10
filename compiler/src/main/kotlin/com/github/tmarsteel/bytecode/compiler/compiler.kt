@@ -4,28 +4,33 @@ import com.github.tmarsteel.bytecode.binary.BytecodeWriter
 import com.github.tmarsteel.bytecode.binary.Instruction
 import com.github.tmarsteel.bytecode.vm.Register
 import java.io.FileOutputStream
+import java.io.InputStreamReader
 import java.nio.file.Path
 
 fun compileFile(input: Path, output: Path) {
 
     val context = CompilationContext()
 
+    // compile init code
+    val initcodeResource = context.javaClass.getResource("/com/github/tmarsteel/bytecode/compiler/initcode.asm")
+    InputStreamReader(initcodeResource.openStream()).useLines { lines ->
+        compileLines(
+                lines.toList(),
+                { line -> Location(initcodeResource, line) },
+                context
+        )
+    }
+
     FileOutputStream(output.toFile()).use { outStream ->
         val inputLines = input.toFile().readLines()
-
         val locationGenerator = { line: Int -> Location(input, line) }
 
         compileLines(inputLines, locationGenerator, context)
 
         var writer = BytecodeWriter(outStream)
+
         context.collectedInstructions.forEach {
             writer.write(it.actual)
-            print(it.actual.opcode)
-            for (i in 0..it.actual.opcode.nArgs - 1) {
-                print(" ")
-                print(it.actual[i])
-            }
-            println()
         }
     }
 }
@@ -40,7 +45,13 @@ fun compileLines(lines: List<String>, locationOf: (Int) -> Location, context: Co
 
         if (line.startsWith(':')) {
             // label
-            context.labels[line.substring(1)] = context.collectedInstructions.size
+            val labelName = line.substring(1)
+            if (labelName in context.labels) {
+                val existingLabel = context.labels[labelName]!!
+                throw SyntaxError("Label $labelName already defined in ${existingLabel.delcarationLocation}; duplicate declaration in $location", location)
+            }
+
+            context.labels[labelName] = Label(location, context.collectedInstructions.size)
         }
         else if (!line.isEmpty() && !line.startsWith("//")) {
             val tokens = line.split(" ")
@@ -95,7 +106,7 @@ fun parseOpcodeArgument(value: String, context: CompilationContext, location: Lo
         val labelName = value.substring(1)
         return {
             if (labelName in context.labels) {
-                val instructionIndex = context.labels[labelName]!!
+                val instructionIndex = context.labels[labelName]!!.instructionOffset
                 context.collectedInstructions
                     .subList(0, instructionIndex)
                     .map({ it.opCode.qWordSize })

@@ -21,8 +21,7 @@ interface MacroCommand {
         return compileLines(
                 statements,
                 { line ->
-                    val macroCodeLocation = locationOf(line)
-                    MacroLocation(macroCodeLocation.file, macroCodeLocation.line, includeLocation)
+                    MacroLocation(locationOf(line), includeLocation)
                 },
                 context
         )
