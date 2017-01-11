@@ -7,7 +7,8 @@ import com.github.tmarsteel.bytecode.compiler.isRegisterArgument
 /**
  * Allocates a new stackframe on the stack; jumps ot the given target address (parameter 0); On return, writes the
  * return value of the invoked stackframe to #a2.
- * Takes at least one parameter. Parameters 2..$ are packed onto the stackframe.
+ * Takes at least one parameter. Parameters 2..$ must be literals. They are interpreted as indexes of the parameters
+ * in the current stackframe. Those values are passed on to the new stackframe in the order passed to this macro.
  *
  * Format of stackframes:
  * offset value
@@ -26,6 +27,12 @@ val InvokeMacro = object : MacroCommand {
             throw SyntaxError("The ${this.javaClass.simpleName} macro requires at least 1 parameter, ${tokens.size} given", includeLocation)
         }
 
+        tokens.subList(1, tokens.size).forEach {
+            if (isRegisterArgument(it)) {
+                throw SyntaxError("All parameters to {${this.javaClass.simpleName} macro except the 0th must be literals", includeLocation)
+            }
+        }
+
         val out: MutableList<String> = mutableListOf()
 
         val myInvocationNr = synchronized(invocationCounter) { invocationCounter++ }
@@ -33,28 +40,32 @@ val InvokeMacro = object : MacroCommand {
         val targetAddrParam = tokens[0]
         val parameters = tokens.subList(1, tokens.size)
 
-        // locate the end of current stackframe
+        // make sure the target jump address is loaded into #m8
+        out.addAll(assureParameterValueInRegister(targetAddrParam to "#m8"))
+
+        // #m6 will be the address of the current stackframe
+        // #m7 will be the address of the new stackframe
+
         out.addAll("""
-        // current stackframe addr into #a1 and #m8
-        ldc 65534 #m1
+        // locate the end of current stackframe
+        // current stackframe addr into #a1, #m6
+        ldc 65533 #m1
         rcl #m1 #a1
-        mov #a1 #m8
-        // calculate address of # of parameters in #a1, #m1
+        mov #a1 #m6
+        // calculate address of # of parameters in #a1
         ldc 3 #a2
         add
-        mov #a2 #m1
-        // recall # of parameters in #a1
-        rcl #a1 #a1
+        // recall # of parameters in #a2
+        rcl #a1 #a2
         // calculate (end of current stackframe + 1) in #a1
-        mov #a1 #a2
-        mov #m1 #a1
         add
         inc #a1
-        // #a1 has now got the address of the new stackframe
-        ldc 65534 #m1
+        // #a1 has now got the address of the new stackframe, write to memory and #m6
+        ldc 65533 #m1
         sto #a1 #m1
-        // write the current stack frame addr
-        sto #m8 #a1
+        mov #a1 #m7
+        // write the previousStackframeAddr of the new stackframe
+        sto #m6 #a1
         // write return jump addr address
         inc #a1
         ldc $returnJumpLabel #m1
@@ -67,29 +78,30 @@ val InvokeMacro = object : MacroCommand {
         inc #a1
         ldc ${parameters.size} #m1
         sto #m1 #a1
+        inc #a1
         """.split('\n'))
 
         // write all parameters
-        for (parameter in tokens) {
-            out += "inc #a1"
-            if (isRegisterArgument(parameter)) {
-                out += "sto $parameter #a1"
-            }
-            else
-            {
-                out += "ldc $parameter #m1"
-                out += "sto #m1 #a1"
-            }
+        // #m6 is the address of the current stackframe
+        // make #m5 hold the address of the first parameter of the new stackframe
+        out += "mov #a1 #m5"
+        for (currentSFIndex in parameters) {
+            // calculate source address
+            out += "mov #m6 #a1"
+            out += "ldc 4 #a2"
+            out += "add"
+            out += "ldc $currentSFIndex #a2"
+            out += "add"
+            // #a1 now holds the source address
+            out += "rcl #a1 #a1"
+            // #a1 now holds the value of the parameter
+            // write that to the address stored in #m5
+            out += "sto #a1 #m5"
+            out += "inc #m5"
         }
 
         // do the jump
-        if (isRegisterArgument(tokens[0])) {
-            out += "vjmp {$targetAddrParam}"
-        }
-        else
-        {
-            out += "jmp {$targetAddrParam}"
-        }
+        out += "vjmp #m8"
 
         // remember the return address
         out += returnJumpLabel
@@ -97,7 +109,7 @@ val InvokeMacro = object : MacroCommand {
         // write the return value to #a1 and reset current stackframe
         out.addAll("""
         // address of the stackframe that has just returned into #m1
-        ldc 65534 #m1
+        ldc 65533 #m1
         rcl #m1 #a1
         // #a1 + 1 is the address of previous stackframe
         // reset current stackframe addr
@@ -106,7 +118,7 @@ val InvokeMacro = object : MacroCommand {
         sto #m2 #m1
         // #a1 + 1 is the address of the return value
         inc #a1
-        rcl #a1 #2
+        rcl #a1 #a2
         """.split('\n'))
 
         return out
@@ -125,30 +137,30 @@ val ReturnMacro = object: MacroCommand {
 
         val out: MutableList<String> = mutableListOf()
 
-        if (!tokens.isEmpty()) {
-            out += "ldc 65534 #m1"
-            out += "rcl #m1 #a1"
-            out += "ldc 2 #a2"
-            out += "add"
+        if (!tokens.isEmpty())
+        {
+            // assure the return value is loaded into #m8
+            out.addAll(assureParameterValueInRegister(tokens[0] to  "#m8"))
+
+            out.addAll("""
+            ldc 65533 #m1
+            rcl #m1 #a1
+            ldc 2 #a2
+            add
             // #a1 now holds the address of the return value
-            if (isRegisterArgument(tokens[0])) {
-                out += "sto ${tokens[0]} #a1"
-            }
-            else
-            {
-                out += "ldc ${tokens[0]} #m1"
-                out += "sto #m1 #a1"
-            }
-            out += "dec #a1"
+            sto #m8 #a1
+            dec #a1
+            rcl #a1 #a1
             // #a1 now holds the return jump address
-            out += "jmp #a1"
+            vjmp #a1
+            """.split('\n'))
         }
         else
         {
-            out += "ldc 65534 #m1"
+            out += "ldc 65533 #m1"
             out += "rcl #m1 #a1"
             out += "inc #a1"
-            out += "jmp #a1"
+            out += "vjmp #a1"
         }
 
         return out
@@ -158,9 +170,36 @@ val ReturnMacro = object: MacroCommand {
 /**
  * Enlargens the parameters space of the current stackframe by X QWORDs (where X is the first parameter to this macro)
  */
-val EnlargeCurrentStackFrameMacro = object : MacroCommand {
+val EnlargeCurrentStackframeMacro = object : MacroCommand {
     override fun unroll(tokens: List<String>, includeLocation: Location): List<String> {
-        throw UnsupportedOperationException("not implemented") // TODO
+        if (tokens.size != 1) {
+            throw SyntaxError("The ${this.javaClass.simpleName} macro requires exactly 1 parameter, ${tokens.size} given", includeLocation)
+        }
+
+        val out: MutableList<String> = mutableListOf()
+
+        // assure the parameter value is loaded into #m8
+        out.addAll(assureParameterValueInRegister(tokens[0] to "#m8"))
+
+        out.addAll("""
+        ldc 65533 #m1
+        rcl #m1 #a1
+        // #a1 now holds the address of the current stackframe
+        // #a1 + 3 is the address of the # of parameters / QWORDs in the frame
+        ldc 3 #a2
+        add
+        // store that address in #m7
+        mov #a1 #m7
+        // recall the number of arguments into #a1
+        rcl #a1 #a1
+        // increase
+        mov #m8 #a2
+        add
+        // write the number back
+        sto #a1 #m7
+        """.split('\n'))
+
+        return out
     }
 }
 
@@ -169,16 +208,82 @@ val EnlargeCurrentStackFrameMacro = object : MacroCommand {
  */
 val StoreInStackMacro = object : MacroCommand {
     override fun unroll(tokens: List<String>, includeLocation: Location): List<String> {
-        throw UnsupportedOperationException("not implemented") // TODO
+        if (tokens.size != 2) {
+            throw SyntaxError("The ${this.javaClass.simpleName} macro requires exactly 2 parameters, ${tokens.size} given", includeLocation)
+        }
+
+        val out: MutableList<String> = mutableListOf()
+
+        // assure the parameters are loaded into their registers
+        out.addAll(assureParameterValueInRegister(tokens[0] to "#m8", tokens[1] to "#a2"))
+
+        out.addAll("""
+        ldc 65533 #a1
+        rcl #a1 #a1
+        // #a1 holds the address of the current stackframe
+        add
+        // that has added the index in the stackframe to the address
+        // add 4 more to the address to correct the offset
+        ldc 4 #a2
+        add
+        // #a1 holds the address of the target stackframe parameter
+        sto #m8 #a1
+        """.split("\n"))
+
+        return out
     }
 }
 
 /**
- * Recalls the value of the Nth QWORD of the current stackframe into the register given as the first parameter (where N
- * is the second parameter)
+ * Recalls the value of the Nth QWORD of the current stackframe into the register given as the second parameter (where N
+ * is the first parameter)
  */
 val RecallFromStackMacro = object : MacroCommand {
     override fun unroll(tokens: List<String>, includeLocation: Location): List<String> {
-        throw UnsupportedOperationException("not implemented") // TODO
+        if (tokens.size != 2) {
+            throw SyntaxError("The ${this.javaClass.simpleName} macro requires exactly 2 parameters, ${tokens.size} given", includeLocation)
+        }
+        if (!isRegisterArgument(tokens[1])) {
+            throw SyntaxError("Parameter 2 given to ${this.javaClass.simpleName} must be a register", includeLocation)
+        }
+
+        val out: MutableList<String> = mutableListOf()
+
+        // assure the parameters are loaded into their registers
+        out.addAll(assureParameterValueInRegister(tokens[0] to "#a2"))
+
+        out.addAll("""
+        ldc 65533 #a1
+        rcl #a1 #a1
+        // #a1 holds the address of the current stackframe
+        add
+        // that has added the index in the stackframe to the address
+        // add 4 more to the address to correct the offset
+        ldc 4 #a2
+        add
+        // #a1 holds the address of the target stackframe parameter
+        rcl #a1 ${tokens[1]}
+        """.split("\n"))
+
+        return out
+    }
+}
+
+val DebugCurrentStackframeMacro = object : MacroCommand {
+    override fun unroll(tokens: List<String>, includeLocation: Location): List<String> {
+        if (tokens.size != 0) {
+            throw SyntaxError("The ${this.javaClass.simpleName} macro takes no parameters", includeLocation)
+        }
+
+        return """
+        ldc 65533 #m8
+        rcl #m8 #m8
+        mov #m8 #a1
+        ldc 3 #a2
+        add
+        rcl #a1 #a2
+        add
+        debug_memory_range #m8 #a1
+        """.split('\n')
     }
 }

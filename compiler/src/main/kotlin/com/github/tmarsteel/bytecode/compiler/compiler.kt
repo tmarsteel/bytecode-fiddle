@@ -28,10 +28,31 @@ fun compileFile(input: Path, output: Path) {
         compileLines(inputLines, locationGenerator, context)
 
         var writer = BytecodeWriter(outStream)
-
         context.collectedInstructions.forEach {
             writer.write(it.actual)
         }
+    }
+
+    printProgram(context)
+}
+
+fun printProgram(context: CompilationContext) {
+
+    var instructionOffset = 0
+    var offset = 0
+    context.collectedInstructions.forEach { defInstruction ->
+
+        val offsetLabel = context.labels.values.find { it.instructionOffset == instructionOffset }
+        if (offsetLabel != null) {
+            println("----- :" + offsetLabel.name)
+        }
+
+        print(offset.toString().padStart(5, '0'))
+        print(" ")
+        println(defInstruction.actual)
+
+        instructionOffset++
+        offset += defInstruction.actual.qWordSize
     }
 }
 
@@ -51,7 +72,7 @@ fun compileLines(lines: List<String>, locationOf: (Int) -> Location, context: Co
                 throw SyntaxError("Label $labelName already defined in ${existingLabel.delcarationLocation}; duplicate declaration in $location", location)
             }
 
-            context.labels[labelName] = Label(location, context.collectedInstructions.size)
+            context.labels[labelName] = Label(labelName, location, context.collectedInstructions.size)
         }
         else if (!line.isEmpty() && !line.startsWith("//")) {
             val tokens = line.split(" ")
@@ -138,7 +159,7 @@ fun parseLiteralArgument(value: String): Long {
 }
 
 fun isRegisterArgument(arg: String): Boolean {
-    return arg.startsWith("#") && arg.substring(1) in REGISTER_MAPPING
+    return arg.startsWith("#") && arg.substring(1).toUpperCase() in REGISTER_MAPPING
 }
 
 class DeferredInstruction(val opCode: Instruction.Opcode, private val generator: () -> Instruction) {
@@ -171,7 +192,8 @@ val OPCODE_MAPPING = mapOf(
         "and"    to Instruction.Opcode.AND,
         "xor"    to Instruction.Opcode.XOR,
         "term"   to Instruction.Opcode.TERMINATE,
-        "debug_core_state" to Instruction.Opcode.DEBUG_CORE_STATE
+        "debug_core_state"   to Instruction.Opcode.DEBUG_CORE_STATE,
+        "debug_memory_range" to Instruction.Opcode.DEBUG_MEMORY_RANGE
 )
 
 val REGISTER_MAPPING = mapOf(
@@ -185,6 +207,5 @@ val REGISTER_MAPPING = mapOf(
         "M8" to Register.MEMORY8,
         "A1" to Register.OPERATOR1,
         "A2" to Register.OPERATOR2,
-        "R"  to Register.RETURN_INSTRUCTION,
         "IP" to Register.INSTRUCTION_POINTER
 )

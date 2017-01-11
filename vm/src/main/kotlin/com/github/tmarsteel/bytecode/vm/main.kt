@@ -21,8 +21,12 @@ fun main(vararg args: String) {
         while(reader.hasNext()) {
             val instruction = reader.next()
             instruction.writeTo(memory, offset)
-            offset += instruction.qWordSize
+
+            print(offset.toString().padStart(5, '0'))
+            print(" ")
             println(instruction)
+
+            offset += instruction.qWordSize
         }
         println("-----------------------------")
     }
@@ -49,5 +53,5 @@ fun printCoreState(core: Core) {
     println("-----")
 }
 
-open class VMRuntimeException(msg: String) : RuntimeException(msg)
+open class VMRuntimeException(msg: String, cause: Throwable? = null) : RuntimeException(msg, cause)
 class TerminationException : VMRuntimeException("Terminated")

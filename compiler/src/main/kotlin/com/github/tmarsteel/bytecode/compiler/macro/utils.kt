@@ -47,17 +47,10 @@ val RecallMemoryRegistersMacro = object : MacroCommand {
             throw SyntaxError("The ${this.javaClass.simpleName} macro requires exactly 1 parameter, ${tokens.size} given", includeLocation)
         }
 
-        val targetAddr = tokens[0]
         val instructions: MutableList<String> = mutableListOf()
 
         // assure the target address is loaded into #a2
-        if (isRegisterArgument(targetAddr)) {
-            if (targetAddr.toUpperCase() != "#A2") {
-                instructions.add("mov $targetAddr #a2")
-            }
-        } else {
-            instructions.add("ldc #a2 $targetAddr")
-        }
+        instructions.addAll(assureParameterValueInRegister(tokens[0] to "#a2"))
 
         for (register in 1..8) {
             instructions.add("rcl #a2 #m$register")

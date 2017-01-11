@@ -1,9 +1,6 @@
 package com.github.tmarsteel.bytecode.compiler
 
-import com.github.tmarsteel.bytecode.compiler.macro.InvokeMacro
-import com.github.tmarsteel.bytecode.compiler.macro.MacroCommand
-import com.github.tmarsteel.bytecode.compiler.macro.RecallMemoryRegistersMacro
-import com.github.tmarsteel.bytecode.compiler.macro.StoreMemoryRegistersMacro
+import com.github.tmarsteel.bytecode.compiler.macro.*
 import java.util.*
 
 /**
@@ -18,10 +15,15 @@ class CompilationContext {
     val macros: MutableMap<String, MacroCommand> = HashMap(PREDEFINED_MACROS)
 }
 
-data class Label(val delcarationLocation: Location, val instructionOffset: Int)
+data class Label(val name: String, val delcarationLocation: Location, val instructionOffset: Int)
 
 val PREDEFINED_MACROS: Map<String, MacroCommand> = mapOf(
-        "_stoRegs" to StoreMemoryRegistersMacro,
-        "_rclRegs" to RecallMemoryRegistersMacro,
-        "_invoke"  to InvokeMacro
+        "_stoRegs"  to StoreMemoryRegistersMacro,
+        "_rclRegs"  to RecallMemoryRegistersMacro,
+        "_sf_enlg"  to EnlargeCurrentStackframeMacro,
+        "_sf_sto"   to StoreInStackMacro,
+        "_sf_rcl"   to RecallFromStackMacro,
+        "_invoke"   to InvokeMacro,
+        "_return"   to ReturnMacro,
+        "_sf_debug" to DebugCurrentStackframeMacro
 )

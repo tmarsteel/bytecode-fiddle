@@ -14,6 +14,5 @@ enum class Register(val index: Int) {
     MEMORY8(7),
     OPERATOR1(8),
     OPERATOR2(9),
-    INSTRUCTION_POINTER(10),
-    RETURN_INSTRUCTION(11)
+    INSTRUCTION_POINTER(10)
 }

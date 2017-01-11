@@ -44,7 +44,7 @@ open class Instruction constructor(val opcode: Opcode, private val args: LongArr
         LESS_THAN(19, 0),
         LESS_THAN_OR_EQUAL(20, 0),
         DEBUG_CORE_STATE(21, 0),
-        DEBUG_MEMORY_RANGE(22, 0);
+        DEBUG_MEMORY_RANGE(22, 2);
 
         /** The number of long words (QWORD) an instruction with this opcode needs */
         val qWordSize: Int = nArgs + 1

@@ -11,7 +11,7 @@ public final class InvalidJumpOffsetException extends VMRuntimeException
 
     public InvalidJumpOffsetException(Long faultyOffset)
     {
-        super("Invalid jump offset " + faultyOffset + "; cannot jump");
+        super("Invalid jump offset " + faultyOffset + "; cannot jump", null);
 
         this.faultyOffset = faultyOffset;
         this.faultyInstructionOffset = null;
@@ -19,7 +19,7 @@ public final class InvalidJumpOffsetException extends VMRuntimeException
 
     public InvalidJumpOffsetException(Long faultyOffset, Long faultyInstructionOffset)
     {
-        super("Invalid jump offset " + faultyOffset + "; cannot jump. Caused by instruction at offset " + faultyInstructionOffset);
+        super("Invalid jump offset " + faultyOffset + "; cannot jump. Caused by instruction at offset " + faultyInstructionOffset, null);
 
         this.faultyOffset = faultyOffset;
         this.faultyInstructionOffset = faultyInstructionOffset;

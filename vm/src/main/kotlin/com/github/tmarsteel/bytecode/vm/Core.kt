@@ -2,6 +2,7 @@ package com.github.tmarsteel.bytecode.vm
 
 import com.github.tmarsteel.bytecode.binary.Instruction
 import com.github.tmarsteel.bytecode.binary.Instruction.Opcode
+import com.github.tmarsteel.bytecode.binary.UnknownOpcodeException
 
 /**
  * A virtual processing core
@@ -12,7 +13,7 @@ class Core(val sharedMemory: Memory) {
 
     fun process(instruction: Instruction) {
         when(instruction.opcode) {
-            Opcode.LOAD_CONSTANT         -> R[instruction[0].toInt()] = instruction[1]
+            Opcode.LOAD_CONSTANT         -> R[instruction[1].toInt()] = instruction[0]
             Opcode.MOVE                  -> R[instruction[1].toInt()] = R[instruction[0].toInt()]
             Opcode.STORE                 -> sharedMemory[R[instruction[1].toInt()]] = R[instruction[0].toInt()]
             Opcode.RECALL                -> R[instruction[1].toInt()] = sharedMemory[R[instruction[0].toInt()]]
@@ -45,6 +46,17 @@ class Core(val sharedMemory: Memory) {
                 }
             }
             Opcode.DEBUG_CORE_STATE      -> printCoreState(this)
+            Opcode.DEBUG_MEMORY_RANGE    -> {
+                val startAddr = R[instruction[0].toInt()]
+                val endAddr   = R[instruction[1].toInt()]
+                println("Memory $startAddr to $endAddr")
+                for (i in startAddr..endAddr) {
+                    print(i.toString().padStart(5, '0'))
+                    print(" ")
+                    println(sharedMemory[i])
+                }
+                println("-----------")
+            }
             Opcode.TERMINATE             -> throw TerminationException()
         }
     }
@@ -63,10 +75,15 @@ class Core(val sharedMemory: Memory) {
 
         while (true) {
             val instrPtrBefore = R[Register.INSTRUCTION_POINTER.index]
-            val instruction = readInstructionFromMemoryOffset(
-                    sharedMemory,
-                    instrPtrBefore
-            )
+            val instruction = try {
+                readInstructionFromMemoryOffset(
+                        sharedMemory,
+                        instrPtrBefore
+                )
+            }
+            catch (ex: UnknownOpcodeException) {
+                throw VMRuntimeException("Unknown opcode ${ex.opcode} at offset $instrPtrBefore", ex)
+            }
             process(instruction)
             val instrPtrAfter = R[Register.INSTRUCTION_POINTER.index]
 
