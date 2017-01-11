@@ -11,7 +11,7 @@ fun main(vararg args: String) {
         exitProcess(-1)
     }
 
-    val memory = Memory(65535)
+    val memory = Memory(65536)
 
     // write code into memory starting at 0x0000
     var offset = 0x0L

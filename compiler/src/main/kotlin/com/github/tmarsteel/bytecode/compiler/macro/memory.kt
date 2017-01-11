@@ -49,7 +49,7 @@ val InvokeMacro = object : MacroCommand {
         out.addAll("""
         // locate the end of current stackframe
         // current stackframe addr into #a1, #m6
-        ldc 65533 #m1
+        ldc 65534 #m1
         rcl #m1 #a1
         mov #a1 #m6
         // calculate address of # of parameters in #a1
@@ -61,7 +61,7 @@ val InvokeMacro = object : MacroCommand {
         add
         inc #a1
         // #a1 has now got the address of the new stackframe, write to memory and #m6
-        ldc 65533 #m1
+        ldc 65534 #m1
         sto #a1 #m1
         mov #a1 #m7
         // write the previousStackframeAddr of the new stackframe
@@ -109,7 +109,7 @@ val InvokeMacro = object : MacroCommand {
         // write the return value to #a1 and reset current stackframe
         out.addAll("""
         // address of the stackframe that has just returned into #m1
-        ldc 65533 #m1
+        ldc 65534 #m1
         rcl #m1 #a1
         // #a1 + 1 is the address of previous stackframe
         // reset current stackframe addr
@@ -143,7 +143,7 @@ val ReturnMacro = object: MacroCommand {
             out.addAll(assureParameterValueInRegister(tokens[0] to  "#m8"))
 
             out.addAll("""
-            ldc 65533 #m1
+            ldc 65534 #m1
             rcl #m1 #a1
             ldc 2 #a2
             add
@@ -157,7 +157,7 @@ val ReturnMacro = object: MacroCommand {
         }
         else
         {
-            out += "ldc 65533 #m1"
+            out += "ldc 65534 #m1"
             out += "rcl #m1 #a1"
             out += "inc #a1"
             out += "vjmp #a1"
@@ -182,7 +182,7 @@ val EnlargeCurrentStackframeMacro = object : MacroCommand {
         out.addAll(assureParameterValueInRegister(tokens[0] to "#m8"))
 
         out.addAll("""
-        ldc 65533 #m1
+        ldc 65534 #m1
         rcl #m1 #a1
         // #a1 now holds the address of the current stackframe
         // #a1 + 3 is the address of the # of parameters / QWORDs in the frame
@@ -218,7 +218,7 @@ val StoreInStackMacro = object : MacroCommand {
         out.addAll(assureParameterValueInRegister(tokens[0] to "#m8", tokens[1] to "#a2"))
 
         out.addAll("""
-        ldc 65533 #a1
+        ldc 65534 #a1
         rcl #a1 #a1
         // #a1 holds the address of the current stackframe
         add
@@ -253,7 +253,7 @@ val RecallFromStackMacro = object : MacroCommand {
         out.addAll(assureParameterValueInRegister(tokens[0] to "#a2"))
 
         out.addAll("""
-        ldc 65533 #a1
+        ldc 65534 #a1
         rcl #a1 #a1
         // #a1 holds the address of the current stackframe
         add
@@ -276,7 +276,7 @@ val DebugCurrentStackframeMacro = object : MacroCommand {
         }
 
         return """
-        ldc 65533 #m8
+        ldc 65534 #m8
         rcl #m8 #m8
         mov #m8 #a1
         ldc 3 #a2

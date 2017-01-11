@@ -2,7 +2,7 @@
 
 ## Memory
 
-The runtime provides 65535 memory cells each 64 bits in size. They are addressed from 0 to 65534.
+The runtime provides 65536 memory cells each 64 bits in size. They are addressed from 0 to 65535.
 
 At startup, all memory cells are initialized with 0. The code loaded into the runtime will be written
 to the memory starting at address 0.
