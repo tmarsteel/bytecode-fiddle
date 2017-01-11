@@ -108,17 +108,22 @@ val InvokeMacro = object : MacroCommand {
 
         // write the return value to #a1 and reset current stackframe
         out.addAll("""
-        // address of the stackframe that has just returned into #m1
-        ldc 65534 #m1
-        rcl #m1 #a1
-        // #a1 + 1 is the address of previous stackframe
+        // address of the stackframe that has just returned into #a1
+        ldc 65534 #a1
+        rcl #a1 #a1
+        // store that address in #m8
+        mov #a1 #m8
+        // #a1 + 2 points to the return value; store that return value in #m7
+        ldc 2 #a2
+        add
+        rcl #a1 #m7
+        // #m8 is a ** to the previous stackframe
         // reset current stackframe addr
-        inc #a1
-        rcl #a1 #m2
-        sto #m2 #m1
-        // #a1 + 1 is the address of the return value
-        inc #a1
-        rcl #a1 #a2
+        rcl #m8 #m8
+        ldc 65534 #a1
+        sto #m8 #a1
+        // store the return value in #m7 into #a2
+        mov #m7 #a2
         """.split('\n'))
 
         return out
