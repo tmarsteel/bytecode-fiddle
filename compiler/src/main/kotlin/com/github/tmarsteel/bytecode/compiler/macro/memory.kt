@@ -160,6 +160,7 @@ val ReturnMacro = object: MacroCommand {
             out += "ldc 65534 #m1"
             out += "rcl #m1 #a1"
             out += "inc #a1"
+            out += "rcl #a1 #a1"
             out += "vjmp #a1"
         }
 
