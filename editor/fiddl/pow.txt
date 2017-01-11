@@ -1,29 +1,22 @@
-ldcnst #a1 2
-ldcnst #a2 20
-ldcnst #r :label1
-jmp :pow
-:label1
-term
-
-// subroutine pow, uses a1, a2, m6, m7 and m8; result in a1, returns to #r
+// subroutine pow (sf[0] to the power of sf[1])
 :pow
 	// store operands
 	// m6 is the return value
 	// m7 is the factor
 	// m8 is the power + counter
-	mov #a1 #m6
-	mov #a1 #m7
-	mov #a2 #m8
+	_sf_rcl 0 #m6
+	mov #m6 #m7
+	_sf_rcl 1 #m8
 	// check whether power is 0 => return 1
-	ldcnst #a1 0
+	ldc 0 #a1
+	mov #m8 #a2
 	eq
 	cjmp :pow_zeropow
-	
 
 	// as long as the counter is > 1
 	:pow_loop
 	mov #m8 #a1
-	ldcnst #a2 1
+	ldc 1 #a2
 	lte
 	cjmp :pow_return
 	// multiply value by factor
@@ -35,10 +28,7 @@ term
 	jmp :pow_loop
 	
 	:pow_zeropow
-	ldcnst #a1 1
-	vjmp #r
+	ldc 1 #a1
 
 	:pow_return
-	mov #m6 #a1
-	vjmp #r
-	
+	_return #m6
